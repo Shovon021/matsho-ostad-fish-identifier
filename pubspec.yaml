@@ -19,7 +19,7 @@ dependencies:
   glassmorphism: ^3.0.0
   
   # ML & Camera
-  tflite_flutter: ^0.10.4
+  tflite_flutter: ^0.12.1
   camera: ^0.10.5+9
   image_picker: ^1.0.7
   
