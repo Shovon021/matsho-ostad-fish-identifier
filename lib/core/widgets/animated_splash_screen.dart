@@ -132,7 +132,7 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'MATSHO OSTAD',
+                          'MOTSYO USTAD',
                           style: TextStyle(
                             color: Colors.white.withAlpha(178),
                             fontSize: 14,

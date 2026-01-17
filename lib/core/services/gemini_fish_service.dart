@@ -6,7 +6,7 @@ import '../config/api_config.dart';
 /// Service for real fish identification using Gemini Vision API
 class GeminiFishService {
   static const String _baseUrl =
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
   /// Analyze a fish image and return identification results
   Future<FishIdentificationResult> identifyFish(XFile imageFile) async {
