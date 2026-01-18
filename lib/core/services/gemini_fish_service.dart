@@ -84,61 +84,73 @@ IMPORTANT VALIDATION RULES:
         }
       };
 
-      final response = await http.post(
-        Uri.parse('$_baseUrl?key=${ApiConfig.geminiApiKey}'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode(requestBody),
-      ).timeout(
-        const Duration(seconds: 30),
-        onTimeout: () => http.Response('{"error": "Request timed out"}', 408),
-      );
+      // Try all available API keys
+      for (int attempt = 0; attempt < ApiConfig.keyCount; attempt++) {
+        final response = await http.post(
+          Uri.parse('$_baseUrl?key=${ApiConfig.geminiApiKey}'),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode(requestBody),
+        ).timeout(
+          const Duration(seconds: 30),
+          onTimeout: () => http.Response('{"error": "Request timed out"}', 408),
+        );
 
-      if (response.statusCode != 200) {
-        return FishIdentificationResult.error(
-            'API Error: ${response.statusCode} - ${response.body}');
+        if (response.statusCode == 200) {
+          // Success - continue processing below
+          final responseData = json.decode(response.body) as Map<String, dynamic>;
+          final candidates = responseData['candidates'] as List?;
+
+          if (candidates == null || candidates.isEmpty) {
+            return FishIdentificationResult.error('No response from AI');
+          }
+
+          final content = candidates[0]['content']['parts'][0]['text'] as String;
+
+          // Extract JSON from response
+          final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(content);
+          if (jsonMatch == null) {
+            return FishIdentificationResult.error('Could not parse AI response');
+          }
+
+          final jsonData = json.decode(jsonMatch.group(0)!) as Map<String, dynamic>;
+
+          if (jsonData['identified'] == false) {
+            return FishIdentificationResult.error(
+                jsonData['error'] ?? 'Fish not identified');
+          }
+
+          return FishIdentificationResult(
+            isIdentified: true,
+            localNameBangla: jsonData['local_name_bangla'] ?? '',
+            localNameEnglish: jsonData['local_name_english'] ?? '',
+            scientificName: jsonData['scientific_name'] ?? '',
+            confidence: (jsonData['confidence'] as num?)?.toDouble() ?? 0.0,
+            habitat: jsonData['habitat'] ?? '',
+            identificationMarkers:
+                List<String>.from(jsonData['identification_markers'] ?? []),
+            similarFishName: jsonData['similar_fish']?['name'],
+            whyNotSimilar: jsonData['similar_fish']?['why_not_this'],
+            description: jsonData['description'] ?? '',
+            calories: jsonData['nutrition']?['calories'] ?? 'N/A',
+            protein: jsonData['nutrition']?['protein'] ?? 'N/A',
+            marketPrice: jsonData['market_price'] ?? 'N/A',
+            cookingMethod: jsonData['cooking_method'] ?? 'N/A',
+            freshnessChecklist: List<String>.from(jsonData['freshness_checklist'] ?? []),
+            recipes: List<String>.from(jsonData['recipes'] ?? []),
+          );
+        } else if (response.statusCode == 429) {
+          // Quota exhausted - rotate to next key and retry
+          ApiConfig.rotateKey();
+          continue;
+        } else {
+          return FishIdentificationResult.error(
+              'API Error: ${response.statusCode} - ${response.body}');
+        }
       }
 
-      final responseData = json.decode(response.body) as Map<String, dynamic>;
-      final candidates = responseData['candidates'] as List?;
-
-      if (candidates == null || candidates.isEmpty) {
-        return FishIdentificationResult.error('No response from AI');
-      }
-
-      final content = candidates[0]['content']['parts'][0]['text'] as String;
-
-      // Extract JSON from response
-      final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(content);
-      if (jsonMatch == null) {
-        return FishIdentificationResult.error('Could not parse AI response');
-      }
-
-      final jsonData = json.decode(jsonMatch.group(0)!) as Map<String, dynamic>;
-
-      if (jsonData['identified'] == false) {
-        return FishIdentificationResult.error(
-            jsonData['error'] ?? 'Fish not identified');
-      }
-
-      return FishIdentificationResult(
-        isIdentified: true,
-        localNameBangla: jsonData['local_name_bangla'] ?? '',
-        localNameEnglish: jsonData['local_name_english'] ?? '',
-        scientificName: jsonData['scientific_name'] ?? '',
-        confidence: (jsonData['confidence'] as num?)?.toDouble() ?? 0.0,
-        habitat: jsonData['habitat'] ?? '',
-        identificationMarkers:
-            List<String>.from(jsonData['identification_markers'] ?? []),
-        similarFishName: jsonData['similar_fish']?['name'],
-        whyNotSimilar: jsonData['similar_fish']?['why_not_this'],
-        description: jsonData['description'] ?? '',
-        calories: jsonData['nutrition']?['calories'] ?? 'N/A',
-        protein: jsonData['nutrition']?['protein'] ?? 'N/A',
-        marketPrice: jsonData['market_price'] ?? 'N/A',
-        cookingMethod: jsonData['cooking_method'] ?? 'N/A',
-        freshnessChecklist: List<String>.from(jsonData['freshness_checklist'] ?? []),
-        recipes: List<String>.from(jsonData['recipes'] ?? []),
-      );
+      // All keys exhausted
+      return FishIdentificationResult.error(
+          'All API keys exhausted. Please try again later.');
     } catch (e) {
       return FishIdentificationResult.error('Error: ${e.toString()}');
     }
