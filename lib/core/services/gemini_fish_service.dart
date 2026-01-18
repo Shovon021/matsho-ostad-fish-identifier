@@ -84,6 +84,9 @@ IMPORTANT VALIDATION RULES:
         }
       };
 
+      // Track errors from each key attempt
+      String lastError = '';
+
       // Try all available API keys
       for (int attempt = 0; attempt < ApiConfig.keyCount; attempt++) {
         final response = await http.post(
@@ -140,17 +143,21 @@ IMPORTANT VALIDATION RULES:
           );
         } else if (response.statusCode == 429) {
           // Quota exhausted - rotate to next key and retry
+          lastError = 'Key ${attempt + 1}: Quota exceeded';
           ApiConfig.rotateKey();
           continue;
         } else {
-          return FishIdentificationResult.error(
-              'API Error: ${response.statusCode} - ${response.body}');
+          // Other error - show it immediately
+          lastError = 'Error ${response.statusCode}: ${response.body}';
+          // For non-429 errors, try next key
+          ApiConfig.rotateKey();
+          continue;
         }
       }
 
-      // All keys exhausted
+      // All keys failed - show the last error
       return FishIdentificationResult.error(
-          'All API keys exhausted. Please try again later.');
+          lastError.isNotEmpty ? lastError : 'All API keys failed');
     } catch (e) {
       return FishIdentificationResult.error('Error: ${e.toString()}');
     }
