@@ -1,16 +1,15 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:cross_file/cross_file.dart';
 import '../data/fish_database.dart';
-import 'gemini_fish_service.dart';
+import '../models/fish_identification_result.dart';
+import 'groq_fish_service.dart';
 
-/// Hybrid Fish Service
-/// Uses offline database first, falls back to Gemini API when:
-/// - Confidence is low
-/// - Internet is available
-/// - Fish not found in local database
+/// Fish Service
+/// Uses Groq Vision API (primary)
+/// Falls back to offline database for enrichment
 
 class HybridFishService {
-  final GeminiFishService _geminiService = GeminiFishService();
+  final GroqFishService _groqService = GroqFishService();
   
   /// Check internet connectivity
   Future<bool> _hasInternet() async {
@@ -23,50 +22,47 @@ class HybridFishService {
   }
 
 
-  /// Identify fish using hybrid approach
+  /// Identify fish using Groq Vision API
   Future<FishIdentificationResult> identifyFish(XFile imageFile) async {
     final hasInternet = await _hasInternet();
     
     // If no internet, return offline-friendly message
     if (!hasInternet) {
-      // In a full implementation, we'd use TFLite here
-      // For now, we'll inform user they need internet
       return FishIdentificationResult.error(
         'ইন্টারনেট সংযোগ নেই। মাছ শনাক্ত করতে ইন্টারনেট প্রয়োজন।\n'
         'No internet connection. Please connect to identify fish.'
       );
     }
 
-    // Use Gemini for identification (primary method)
-    final geminiResult = await _geminiService.identifyFish(imageFile);
+    // Use Groq API
+    final groqResult = await _groqService.identifyFish(imageFile);
     
-    // If Gemini identified the fish, enrich with local database
-    if (geminiResult.isIdentified) {
-      return _enrichWithLocalData(geminiResult);
+    if (groqResult.isIdentified) {
+      return _enrichWithLocalData(groqResult);
     }
     
-    return geminiResult;
+    return groqResult;
   }
 
-  /// Enrich Gemini results with local database data
-  FishIdentificationResult _enrichWithLocalData(FishIdentificationResult geminiResult) {
+  /// Enrich API results with local database data
+  FishIdentificationResult _enrichWithLocalData(FishIdentificationResult apiResult) {
     // Try to find matching fish in local database
-    final localFish = BangladeshiFishDatabase.findByName(geminiResult.localNameEnglish);
+    final localFish = BangladeshiFishDatabase.findByName(apiResult.localNameEnglish);
     
     if (localFish != null) {
-      // Merge local data with Gemini result for more complete info
+      // Merge local data with API result for more complete info
       return FishIdentificationResult(
         isIdentified: true,
         localNameBangla: localFish.nameBangla,
         localNameEnglish: localFish.nameEnglish,
         scientificName: localFish.scientificName,
-        confidence: geminiResult.confidence,
+        confidence: apiResult.confidence,
         habitat: localFish.habitat,
-        identificationMarkers: geminiResult.identificationMarkers,
-        similarFishName: geminiResult.similarFishName,
-        whyNotSimilar: geminiResult.whyNotSimilar,
-        description: geminiResult.description.isNotEmpty 
-            ? geminiResult.description 
+        identificationMarkers: apiResult.identificationMarkers,
+        similarFishName: apiResult.similarFishName,
+        whyNotSimilar: apiResult.whyNotSimilar,
+        description: apiResult.description.isNotEmpty 
+            ? apiResult.description 
             : localFish.description,
         calories: localFish.calories,
         protein: localFish.protein,
@@ -77,8 +73,8 @@ class HybridFishService {
       );
     }
     
-    // Return original Gemini result if not found in local DB
-    return geminiResult;
+    // Return original API result if not found in local DB
+    return apiResult;
   }
 
   /// Get fish info from local database by name

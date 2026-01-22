@@ -4,6 +4,8 @@ import '../theme/app_colors.dart';
 import '../theme/theme_provider.dart';
 import 'glass_container.dart';
 import '../../features/map/presentation/catch_map_screen.dart';
+import '../../features/settings/presentation/settings_screen.dart';
+import '../../features/history/presentation/aquarium_screen.dart';
 
 class GlassDrawer extends ConsumerWidget {
   const GlassDrawer({super.key});
@@ -102,7 +104,12 @@ class GlassDrawer extends ConsumerWidget {
                       labelEn: 'Scan History',
                       onTap: () {
                         Navigator.pop(context);
-                        // TODO: Navigate to history
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const AquariumScreen(),
+                          ),
+                        );
                       },
                     ),
                     _buildMenuItem(
@@ -121,16 +128,21 @@ class GlassDrawer extends ConsumerWidget {
                       },
                     ),
 
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.settings_rounded,
-                      labelBn: 'সেটিংস',
-                      labelEn: 'Settings',
-                      onTap: () {
-                        Navigator.pop(context);
-                        // TODO: Navigate to settings
-                      },
-                    ),
+                      _buildMenuItem(
+                        context,
+                        icon: Icons.settings_rounded,
+                        labelBn: 'সেটিংস',
+                        labelEn: 'Settings',
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const SettingsScreen(),
+                            ),
+                          );
+                        },
+                      ),
                     
                     // Theme Selector Section
                     const Padding(

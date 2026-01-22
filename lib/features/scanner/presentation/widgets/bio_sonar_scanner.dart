@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
 import '../../../../core/theme/app_colors.dart';
 
+/// Clean, minimalist scanner button with Apple-like pulse animation
 class BioSonarScanner extends StatefulWidget {
+  final VoidCallback? onTap;
   final bool isScanning;
-  final double width;
-  final double height;
 
   const BioSonarScanner({
     super.key,
-    required this.isScanning,
-    required this.width,
-    required this.height,
+    this.onTap,
+    this.isScanning = false,
   });
 
   @override
@@ -19,202 +17,165 @@ class BioSonarScanner extends StatefulWidget {
 }
 
 class _BioSonarScannerState extends State<BioSonarScanner>
-    with TickerProviderStateMixin {
-  late AnimationController _scanController;
-  late AnimationController _gridController;
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+  late Animation<double> _opacityAnimation;
 
   @override
   void initState() {
     super.initState();
-    _scanController = AnimationController(
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 600),
       vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat(reverse: true);
+    );
 
-    _gridController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat();
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeOut),
+    );
+
+    _opacityAnimation = Tween<double>(begin: 0.6, end: 0.0).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeOut),
+    );
   }
 
   @override
   void dispose() {
-    _scanController.dispose();
-    _gridController.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
+  void _triggerPulse() {
+    _pulseController.forward(from: 0.0);
+    widget.onTap?.call();
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (!widget.isScanning) return const SizedBox.shrink();
+    const double size = 180;
 
-    return SizedBox(
-      width: widget.width,
-      height: widget.height,
-      child: Stack(
-        children: [
-          // Hexagon Grid Overlay
-          AnimatedBuilder(
-            animation: _gridController,
-            builder: (context, child) {
-              return CustomPaint(
-                painter: HexagonGridPainter(
-                  animationValue: _gridController.value,
-                  color: AppColors.primaryLight.withAlpha(30),
+    return GestureDetector(
+      onTap: widget.isScanning ? null : _triggerPulse,
+      child: SizedBox(
+        width: size + 40,
+        height: size + 40,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Pulse Ring (expands outward on tap)
+            AnimatedBuilder(
+              animation: _pulseController,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: _pulseAnimation.value,
+                  child: Container(
+                    width: size,
+                    height: size,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AppColors.primaryLight.withAlpha(
+                          (_opacityAnimation.value * 255).toInt(),
+                        ),
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+
+            // Main Button Circle
+            Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppColors.primaryMedium.withAlpha(180),
+                    AppColors.primaryDark.withAlpha(220),
+                  ],
                 ),
-                size: Size(widget.width, widget.height),
-              );
-            },
-          ),
-
-          // Scanning Beam
-          AnimatedBuilder(
-            animation: _scanController,
-            builder: (context, child) {
-              return CustomPaint(
-                painter: ScannerBeamPainter(
-                  position: _scanController.value,
-                  color: AppColors.accentCoral,
+                boxShadow: [
+                  // Subtle outer glow
+                  BoxShadow(
+                    color: AppColors.primaryLight.withAlpha(60),
+                    blurRadius: 20,
+                    spreadRadius: 2,
+                  ),
+                  // Inner shadow for depth
+                  BoxShadow(
+                    color: Colors.black.withAlpha(40),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+                border: Border.all(
+                  color: Colors.white.withAlpha(30),
+                  width: 1.5,
                 ),
-                size: Size(widget.width, widget.height),
-              );
-            },
-          ),
-
-          // High-Tech Corners
-          const CornerBrackets(),
-        ],
+              ),
+              child: widget.isScanning
+                  ? _buildScanningIndicator()
+                  : _buildCameraIcon(),
+            ),
+          ],
+        ),
       ),
     );
   }
-}
 
-class ScannerBeamPainter extends CustomPainter {
-  final double position; // 0.0 to 1.0
-  final Color color;
-
-  ScannerBeamPainter({required this.position, required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..shader = LinearGradient(
-        colors: [
-          color.withAlpha(0),
-          color.withAlpha(150),
-          color.withAlpha(255),
-          color.withAlpha(150),
-          color.withAlpha(0),
-        ],
-        stops: const [0.0, 0.45, 0.5, 0.55, 1.0],
-      ).createShader(
-          Rect.fromLTWH(0, position * size.height - 20, size.width, 40));
-
-    // Draw the main beam
-    canvas.drawRect(
-      Rect.fromLTWH(0, position * size.height - 2, size.width, 4),
-      Paint()
-        ..color = color.withAlpha(200)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
-    );
-
-    // Draw the gradient glow
-    canvas.drawRect(
-      Rect.fromLTWH(0, position * size.height - 30, size.width, 60),
-      paint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(ScannerBeamPainter oldDelegate) =>
-      oldDelegate.position != position;
-}
-
-class HexagonGridPainter extends CustomPainter {
-  final double animationValue;
-  final Color color;
-
-  HexagonGridPainter({required this.animationValue, required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
-
-    const double hexSize = 30.0;
-    const double width = hexSize * 2; // Approximate width of a point-up hexagon
-    const double vertDist = hexSize * 1.5; // Vertical distance between centers
-
-    for (double y = 0; y < size.height + hexSize; y += vertDist) {
-      bool offsetRow = (y ~/ vertDist) % 2 == 1;
-      for (double x = offsetRow ? width * 0.5 : 0;
-          x < size.width + hexSize;
-          x += width) {
-        // Randomly "flicker" hexagons based on animation
-        final noise = math.sin(x * y * animationValue);
-        if (noise > 0.5) {
-          _drawHexagon(canvas, Offset(x, y), hexSize,
-              paint..color = color.withAlpha((noise * 100).toInt()));
-        }
-      }
-    }
-  }
-
-  void _drawHexagon(Canvas canvas, Offset center, double size, Paint paint) {
-    final path = Path();
-    for (int i = 0; i < 6; i++) {
-      final angle = (60 * i + 30) * math.pi / 180; // +30 for pointy top
-      final x = center.dx + size * math.cos(angle);
-      final y = center.dy + size * math.sin(angle);
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
-    }
-    path.close();
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(HexagonGridPainter oldDelegate) =>
-      true; // Constant animation
-}
-
-class CornerBrackets extends StatelessWidget {
-  const CornerBrackets({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
+  Widget _buildCameraIcon() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        // Top Left
-        Positioned(left: 0, top: 0, child: _buildBracket(0)),
-        // Top Right
-        Positioned(right: 0, top: 0, child: _buildBracket(90)),
-        // Bottom Right
-        Positioned(right: 0, bottom: 0, child: _buildBracket(180)),
-        // Bottom Left
-        Positioned(left: 0, bottom: 0, child: _buildBracket(270)),
+        Icon(
+          Icons.camera_alt_rounded,
+          size: 56,
+          color: Colors.white.withAlpha(230),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'SCAN',
+          style: TextStyle(
+            color: Colors.white.withAlpha(200),
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 2.5,
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildBracket(double angle) {
-    return Transform.rotate(
-      angle: angle * math.pi / 180,
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: const BoxDecoration(
-          border: Border(
-            top: BorderSide(color: AppColors.primaryLight, width: 3),
-            left: BorderSide(color: AppColors.primaryLight, width: 3),
+  Widget _buildScanningIndicator() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: 40,
+          height: 40,
+          child: CircularProgressIndicator(
+            strokeWidth: 3,
+            valueColor: AlwaysStoppedAnimation<Color>(
+              Colors.white.withAlpha(200),
+            ),
           ),
         ),
-      ),
+        const SizedBox(height: 12),
+        Text(
+          'SCANNING...',
+          style: TextStyle(
+            color: Colors.white.withAlpha(180),
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 1.5,
+          ),
+        ),
+      ],
     );
   }
 }

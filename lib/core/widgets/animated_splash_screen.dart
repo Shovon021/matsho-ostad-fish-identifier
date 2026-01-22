@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../features/home/presentation/home_screen.dart';
+import '../../features/scanner/presentation/scanner_screen.dart';
 import '../theme/app_colors.dart';
 import 'fluid_background.dart';
 import 'mobile_wrapper.dart';
@@ -52,7 +52,7 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
         if (mounted) {
           Navigator.of(context).pushReplacement(
             PageRouteBuilder(
-              pageBuilder: (_, __, ___) => const MobileWrapper(child: HomeScreen()),
+              pageBuilder: (_, __, ___) => const MobileWrapper(child: ScannerScreen()),
               transitionsBuilder: (_, animation, __, child) {
                 return FadeTransition(opacity: animation, child: child);
               },
@@ -101,10 +101,13 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
                             ),
                           ],
                         ),
-                        child: Image.asset(
-                          'assets/images/logo.png',
-                          width: 150,
-                          height: 150,
+                        child: ClipOval(
+                          child: Image.asset(
+                            'assets/images/app_icon.jpg',
+                            width: 150,
+                            height: 150,
+                            fit: BoxFit.cover,
+                          ),
                         ),
                       ),
                     ),

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:glassmorphism/glassmorphism.dart';
+import 'dart:ui'; // Required for ImageFilter
 
 class GlassContainer extends StatefulWidget {
   final Widget child;
@@ -28,48 +28,39 @@ class _GlassContainerState extends State<GlassContainer> {
 
   @override
   Widget build(BuildContext context) {
-    final glassWidget = AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOut,
-      transform: Matrix4.diagonal3Values(_isHovered ? 1.02 : 1.0, _isHovered ? 1.02 : 1.0, 1.0),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(widget.borderRadius),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(_isHovered ? 60 : 30),
-              blurRadius: _isHovered ? 20 : 12,
-              offset: const Offset(0, 8),
+    // Dynamic border and background based on hover state
+    final borderColor = Colors.white.withAlpha(_isHovered ? 100 : 40);
+    final backgroundColor = Colors.white.withAlpha(_isHovered ? 30 : 15);
+    
+    final glassWidget = ClipRRect(
+      borderRadius: BorderRadius.circular(widget.borderRadius),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+        child: Container(
+          width: widget.width,
+          height: widget.height,
+          padding: widget.padding,
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(widget.borderRadius),
+            border: Border.all(color: borderColor, width: 1.5),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withAlpha(_isHovered ? 40 : 25),
+                Colors.white.withAlpha(_isHovered ? 20 : 10),
+              ],
             ),
-          ],
-        ),
-        child: GlassmorphicContainer(
-          width: widget.width ?? double.infinity,
-          height: widget.height ?? double.infinity,
-          borderRadius: widget.borderRadius,
-          blur: 20,
-          alignment: Alignment.center,
-          border: 1.5,
-          linearGradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.white.withAlpha(_isHovered ? 35 : 25),
-              Colors.white.withAlpha(_isHovered ? 18 : 12),
+            boxShadow: [
+               BoxShadow(
+                color: Colors.black.withAlpha(_isHovered ? 50 : 30),
+                blurRadius: _isHovered ? 20 : 10,
+                offset: const Offset(0, 8),
+              ),
             ],
           ),
-          borderGradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.white.withAlpha(_isHovered ? 150 : 127),
-              Colors.white.withAlpha(_isHovered ? 40 : 25),
-            ],
-          ),
-          child: Padding(
-            padding: widget.padding,
-            child: widget.child,
-          ),
+          child: widget.child,
         ),
       ),
     );
@@ -80,6 +71,7 @@ class _GlassContainerState extends State<GlassContainer> {
         onExit: (_) => setState(() => _isHovered = false),
         child: GestureDetector(
           onTap: widget.onTap,
+          behavior: HitTestBehavior.opaque,
           child: glassWidget,
         ),
       );

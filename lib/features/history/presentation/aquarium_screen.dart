@@ -1,9 +1,11 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart'; // For kIsWeb
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/fluid_background.dart';
 import '../../../../core/widgets/glass_container.dart';
+import '../../scanner/presentation/result_screen.dart';
 import '../../history/data/history_repository.dart';
 import '../../history/data/scan_history_model.dart';
 
@@ -52,13 +54,10 @@ class _AquariumScreenState extends State<AquariumScreen> {
                       children: [
                         Text(
                           'My Aquarium',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineMedium
-                              ?.copyWith(
+                          style: GoogleFonts.hindSiliguri(
+                                textStyle: Theme.of(context).textTheme.headlineMedium,
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
-                                fontFamily: 'Hind Siliguri',
                               ),
                         ),
                         Text(
@@ -200,11 +199,11 @@ class _AquariumScreenState extends State<AquariumScreen> {
               children: [
                 Text(
                   fish.fishLocalName,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'Hind Siliguri',
-                      ),
+                  style: GoogleFonts.hindSiliguri(
+                    textStyle: Theme.of(context).textTheme.titleMedium,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -222,7 +221,33 @@ class _AquariumScreenState extends State<AquariumScreen> {
             ),
           ),
 
-          // Badge
+          // Tap Ripple & Navigation
+          Positioned.fill(
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ResultScreen(
+                        imagePath: fish.imagePath,
+                        fishNameLocal: fish.fishLocalName,
+                        fishNameScientific: fish.fishScientificName,
+                        habitat: 'Information stored in history', // Placeholder
+                        confidence: fish.confidence,
+                        identificationMarkers: const ['Detailed markers not saved in history'],
+                        description: 'Detailed description available in fresh scan only.',
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+
+          // Badge (Top Right)
           Positioned(
             top: 12,
             right: 12,
